@@ -1,122 +1,108 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from './assets/vite.svg'
-import heroImg from './assets/hero.png'
-import './App.css'
+
+
+import 'bootstrap/dist/css/bootstrap.min.css';
+
+import dayjs from 'dayjs';
+
+//import reactLogo from './assets/react.svg'
+//import viteLogo from './assets/vite.svg'
+//import heroImg from './assets/hero.png'
+//import './App.css'
+
+import { useContext, useState, useEffect, createContext } from 'react';
+import { Container } from 'react-bootstrap';
+import { Navigate, Outlet, Route, Routes, useNavigate } from 'react-router';
+
+
+import { LoginForm, Logout } from './components/LoginForm.jsx'; // 1. Import de votre formulaire
+import Footer from './components/Footer.jsx';
+import Header from './components/Header.jsx';
+import WelcomePage from './components/WelcomePage.jsx'
+import HomeView from './components/HomeView.jsx';
+import GameLayout from './components/GameLayout.jsx';
+import RankingView from './components/RankingView'; // Ta future page de classement
+//import GameLayout from './components/GameLayout';       // Ton composant qui gère le jeu (Setup, Planning...)
+
+import UserContext from './contexts/UserContext.js';
+
+import { User,Station,Line,Event,Game } from "./models/file.js";
+
 
 function App() {
-  const [count, setCount] = useState(0)
+
+  const navigate = useNavigate()
+
+  // Currently logged-in user
+  const [user, setUser] = useState({ id: undefined, name: undefined })
+
+  const doLogin = (newUser) => {
+    setUser({ id: newUser.id, name: newUser.name })
+    navigate('/home')
+  }
+
+  const doLogout = () => {
+    setUser({ id: undefined, name: undefined })
+    navigate('/')
+  }
+
 
   return (
-    <>
-      <section id="center">
-        <div className="hero">
-          <img src={heroImg} className="base" width="170" height="179" alt="" />
-          <img src={reactLogo} className="framework" alt="React logo" />
-          <img src={viteLogo} className="vite" alt="Vite logo" />
-        </div>
-        <div>
-          <h1>Get started</h1>
-          <p>
-            Edit <code>src/App.jsx</code> and save to test <code>HMR</code>
-          </p>
-        </div>
-        <button
-          type="button"
-          className="counter"
-          onClick={() => setCount((count) => count + 1)}
-        >
-          Count is {count}
-        </button>
-      </section>
+    <UserContext.Provider value={user}>
+      <Container>
+        <Routes>
+          {/* 3. Route parente avec la mise en page principale */}
+          <Route path='/' element={<MainLayout doLogin={doLogin} />}>
+            
+            {/* Si connecté -> /home, sinon affiche le contenu anonyme */}
+            <Route index element={<LoginView/>} />
+            
+            {/* Route privée /home (accessible uniquement si connecté) */}
+            <Route path='home' element={
+              user.id ? <HomeView user={user} /> : <Navigate to='/' />
+            } />
+            
+            {/* Route privée /ranking (Classement général) */}
+            <Route path='ranking' element={
+              user.id ? <RankingView /> : <Navigate to='/' />
+            } />
 
-      <div className="ticks"></div>
+            {/* Route privée /game (Déroulement du jeu : de la Phase 1 à 4) */}
+            <Route path='game' element={user ? <GameLayout /> : <Navigate to='/' />} />
 
-      <section id="next-steps">
-        <div id="docs">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#documentation-icon"></use>
-          </svg>
-          <h2>Documentation</h2>
-          <p>Your questions, answered</p>
-          <ul>
-            <li>
-              <a href="https://vite.dev/" target="_blank">
-                <img className="logo" src={viteLogo} alt="" />
-                Explore Vite
-              </a>
-            </li>
-            <li>
-              <a href="https://react.dev/" target="_blank">
-                <img className="button-icon" src={reactLogo} alt="" />
-                Learn more
-              </a>
-            </li>
-          </ul>
-        </div>
-        <div id="social">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#social-icon"></use>
-          </svg>
-          <h2>Connect with us</h2>
-          <p>Join the Vite community</p>
-          <ul>
-            <li>
-              <a href="https://github.com/vitejs/vite" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#github-icon"></use>
-                </svg>
-                GitHub
-              </a>
-            </li>
-            <li>
-              <a href="https://chat.vite.dev/" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#discord-icon"></use>
-                </svg>
-                Discord
-              </a>
-            </li>
-            <li>
-              <a href="https://x.com/vite_js" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#x-icon"></use>
-                </svg>
-                X.com
-              </a>
-            </li>
-            <li>
-              <a href="https://bsky.app/profile/vite.dev" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#bluesky-icon"></use>
-                </svg>
-                Bluesky
-              </a>
-            </li>
-          </ul>
-        </div>
-      </section>
-
-      <div className="ticks"></div>
-      <section id="spacer"></section>
-    </>
+            
+            {/* Routes pour l'authentification */}
+            <Route path='login' element={<LoginForm doLogin={doLogin} />} />
+            <Route path='logout' element={<Logout doLogin={doLogin} />} /> {/* Ajusté selon votre logique de logout */}
+            
+            {/* Page d'erreur globale */}
+            <Route path='error' element={<h1 className="text-center text-danger mt-5">Something is wrong</h1>} />
+          </Route>
+        </Routes>
+      </Container>
+    </UserContext.Provider>
   )
 }
+
+
+// 4. Composant de mise en page globale (Layout)
+function MainLayout(props) {
+  return <>
+    <Header doLogin={props.doLogin}></Header>
+    <Outlet />
+    <Footer></Footer>
+  </>
+}
+
+function LoginView(props) {
+  const user = useContext(UserContext)
+  
+  if (user.id) {
+    return <Navigate to='/home' />
+  }
+
+  return <WelcomePage/>
+}
+
+
 
 export default App
