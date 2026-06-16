@@ -3,6 +3,7 @@ import { Container, Button, Card, Spinner, Row, Col, Badge, Table, ListGroup, Al
 import 'bootstrap-icons/font/bootstrap-icons.css';
 
 function GameLayout() {
+
   const [gamePhase, setGamePhase] = useState(1); // 1 = Setup, 2 = Planning, 3 = Exécution/Résultats
   const [networkData, setNetworkData] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -415,81 +416,82 @@ function GameLayout() {
 
       {/* PHASE 3 : Exécution et Affichage pas à pas des événements */}
       {gamePhase === 3 && validationResult && (
-        <Card className="shadow p-4 text-center border-dark">
-          <Card.Body>
-            <h2 className="fw-bold mb-4" style={{ color: '#4048d4' }}>Phase 3 : Rapport du Centre de Contrôle</h2>
+        <Container className="p-4 text-center border-dark">
 
             {/* CAS OÙ LA ROUTE EST INVALIDÉE */}
             {!validationResult.isValid ? (
-              <div className="bg-danger-subtle border border-danger p-4 rounded mb-4">
-                <h3 className="text-danger fw-bold">❌ Course Invalidée ou Incomplète !</h3>
-                <p className="my-3 text-dark fs-5">{validationResult.reason || "L'itinéraire proposé ne respecte pas le plan de lignes."}</p>
-                <div className="fs-1 my-3">💰 0 Coin</div>
-                <p className="text-muted small">Conformément aux règles du réseau, vous perdez la totalité de vos 20 jetons initiaux.</p>
-                <Button variant="primary" className="mt-3 fw-bold btn-lg" onClick={() => setGamePhase(1)}>
-                  🔄 Revenir au menu principal
+              <div>
+                <h1 className="text-danger fw-bold" style={{ color: 'red' }}>
+                  <span className="fw-bold fs-3 bg-danger bg-opacity-25 p-3 d-block text-center">Route incomplete or invalid</span>
+                </h1>
+
+                <p className="my-3 text-secondary fs-5">
+                  The stations do not follow each other or do not reach the objective
+                </p>
+                <div className="fs-1 my-3">0 <i className="bi bi-coin" style={{ color: 'black' }}></i></div>
+                <Button variant="primary" style={{ backgroundColor: '#4048d4', borderColor: '#4048d4' }} className="mt-3 fw-bold btn-lg" onClick={() => setGamePhase(1)}>
+                      Start a new game
                 </Button>
               </div>
             ) : (
               /* CAS OÙ LA ROUTE EST ENTIÈREMENT VALIDÉE */
               <div>
-                <Alert variant="success" className="fs-4 fw-bold shadow-sm">
-                  ✅ Itinéraire Validé avec succès ! Suivi du trajet en cours...
-                </Alert>
+                <h1 className="text-success fw-bold">
+                  <span className="fw-bold fs-3 bg-success bg-opacity-25 p-3 d-block text-center">
+                    Route Validated !
+                  </span>
+                </h1>
 
                 {/* Affichage pas à pas de l'étape actuelle */}
                 {validationResult.steps.length > 0 && currentStepIndex < validationResult.steps.length ? (
-                  <Card className="my-4 border-primary shadow-sm bg-light">
-                    <Card.Body className="py-4">
+                  <Container className="my-4 border-primary">
                       <div className="text-muted small text-uppercase fw-bold mb-2">
-                        Étape {currentStepIndex + 1} sur {validationResult.steps.length}
+                        Step {currentStepIndex + 1} of {validationResult.steps.length}
                       </div>
-                      <h3 className="text-primary fw-bold mb-3">
-                        🚇 Section : {validationResult.steps[currentStepIndex].segment}
+                      <h3 className="fw-bold mb-3" style={{color: 'black'}}>
+                        Segment : {validationResult.steps[currentStepIndex].segment}
                       </h3>
-                      <Card className="mx-auto my-3 p-3 bg-white border-warning" style={{ maxWidth: '600px' }}>
-                        <h5 className="fw-bold text-warning-emphasis">⚠️ Événement imprévu :</h5>
-                        <p className="fs-5 italic mb-0">"{validationResult.steps[currentStepIndex].eventDescription}"</p>
-                      </Card>
+                      <div className="fw-bold fs-4 bg-warning border border-warning p-4 d-inline-block" 
+                        style={{ '--bs-bg-opacity': 0.4 }}>
+                        <h5 className="fw-bold text-warning-emphasis">Random Event :</h5>
+                        <p className="fs-5 mb-0">"{validationResult.steps[currentStepIndex].eventDescription}"</p>
+                      </div>
                       <h4 className="my-3">
-                        Impact : {' '}
-                        <Badge bg={validationResult.steps[currentStepIndex].effect >= 0 ? "success" : "danger"} className="fs-5">
-                          {validationResult.steps[currentStepIndex].effect >= 0 ? `+${validationResult.steps[currentStepIndex].effect}` : validationResult.steps[currentStepIndex].effect} coins
-                        </Badge>
+                        <Badge 
+                        bg={validationResult.steps[currentStepIndex].effect > 0 ? "success" : validationResult.steps[currentStepIndex].effect < 0 ? "danger" : "secondary"} 
+                        className="fs-3">
+                        {validationResult.steps[currentStepIndex].effect > 0 ? `+${validationResult.steps[currentStepIndex].effect}` : validationResult.steps[currentStepIndex].effect} <i className="bi bi-coin" style={{ color: 'black' }}></i>
+                      </Badge>
                       </h4>
                       <div className="fs-3 fw-bold text-dark mt-4">
-                        Solde actuel : 👛 {validationResult.steps[currentStepIndex].currentCoins} coins
+                        Current Coins : {validationResult.steps[currentStepIndex].currentCoins} <i className="bi bi-coin" style={{ color: 'black' }}></i>
                       </div>
 
                       <Button 
                         variant="success" 
                         size="lg" 
                         className="mt-4 px-5 fw-bold" 
-                        onClick={() => setCurrentStepIndex(prev => prev + 1)}
-                      >
-                        {currentStepIndex === validationResult.steps.length - 1 ? "🏁 Voir le bilan final" : "➡️ Avancer à la station suivante"}
+                        style={{ backgroundColor: '#4048d4', borderColor: '#4048d4' }}
+                        onClick={() => setCurrentStepIndex(prev => prev + 1)}>
+                        {currentStepIndex === validationResult.steps.length - 1 ? "View final results" : "Move to next station"}
                       </Button>
-                    </Card.Body>
-                  </Card>
+                  </Container>
                 ) : (
                   /* ÉCRAN DE BILAN DE FIN DE PARCOURS */
-                  <div className="bg-success-subtle border border-success p-4 rounded my-4">
-                    <h3 className="text-success fw-bold">🏁 Terminus ! Vous êtes arrivé à destination</h3>
-                    <p className="text-muted">Tous les événements du voyage ont été appliqués avec succès.</p>
-                    <div className="bg-white rounded p-3 my-3 border d-inline-block shadow-sm">
-                      <span className="fs-4 text-secondary">Score final enregistré :</span>
-                      <div className="fs-1 fw-bold text-success">🏆 {validationResult.finalScore} Coins</div>
+                  <div>
+                    <div className="bg-white p-4 my-3 border d-inline-block">
+                      <span className="fs-2">Final Score</span>
+                      <div className="fs-1 fw-bold "> {validationResult.finalScore} <i className="bi bi-coin" style={{ color: 'black' }}></i></div>
                     </div>
                     <br />
-                    <Button variant="primary" className="mt-3 fw-bold btn-lg" onClick={() => setGamePhase(1)}>
-                      🎮 Lancer une nouvelle session
+                    <Button variant="primary" style={{ backgroundColor: '#4048d4', borderColor: '#4048d4' }} className="mt-3 fw-bold btn-lg" onClick={() => setGamePhase(1)}>
+                      Start a new game
                     </Button>
                   </div>
                 )}
               </div>
             )}
-          </Card.Body>
-        </Card>
+        </Container>
       )}
     </Container>
   );
