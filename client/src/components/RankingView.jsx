@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { Container, Table, Card, Button, Spinner, Alert } from 'react-bootstrap';
 import { useNavigate } from 'react-router';
 
+import dayjs from 'dayjs';
+import 'bootstrap-icons/font/bootstrap-icons.css';
 import { getRanking } from '../api/api.js'; 
 
 function RankingView() {
@@ -29,20 +31,18 @@ function RankingView() {
 
   return (
     <Container className="mt-5">
-      <Card className="shadow-sm p-4">
-        <Card.Body>
-          <div className="d-flex justify-content-between align-items-center mb-4">
-            {/* 🌟 MODIFICATION : Titre personnalisé */}
-            <h1 className="mb-0">🏆 Mes 5 Meilleurs Scores</h1>
-            <Button variant="secondary" onClick={() => navigate('/home')}>
-              🏠 Retour Accueil
-            </Button>
+      
+          <div className="mb-4 text-center">
+            <h1 style={{ 
+              color: '#212529',          /* Un noir adouci, moins agressif */
+              margin: '10px 0', 
+              fontSize: '2.5rem',        /* Un poil plus petit */
+              fontWeight: '600',         /* Un gras élégant mais pas étouffant */
+              fontFamily: '"Segoe UI", Roboto, Helvetica, Arial, sans-serif' /* Une police moderne et épurée */
+            }}>
+              Top Scores
+            </h1>
           </div>
-
-          {/* 🌟 MODIFICATION : Texte explicatif personnalisé */}
-          <p className="text-muted mb-4">
-            Retrouvez l'historique de vos meilleures performances sur le réseau métropolitain, classées du plus haut au plus bas score.
-          </p>
 
           {/* Indicateur de chargement */}
           {loading && (
@@ -61,43 +61,46 @@ function RankingView() {
 
           {/* Affichage du tableau une fois les données reçues */}
           {!loading && !error && (
+
             <Table striped bordered hover responsive className="align-middle text-center">
               <thead className="table-dark">
                 <tr>
-                  <th style={{ width: '15%' }}>Performance</th>
-                  {/* 🌟 MODIFICATION : "Username" devient "ID Partie" */}
-                  <th>Identifiant Partie</th>
-                  <th style={{ width: '25%' }}>Score Obtenu (Coins)</th>
+                  <th style={{ width: '15%' }}>Rankings</th>
+                  <th style={{ width: '25%' }}>Score Achieved (Coins)</th>
+                  <th style={{ width: '25%' }}>Date</th>
                 </tr>
               </thead>
               <tbody>
                 {ranking.length === 0 ? (
                   <tr>
                     <td colSpan="3" className="text-muted py-4">
-                      Vous n'avez pas encore enregistré de partie terminée.
+                      You haven't recorded any completed games yet
                     </td>
                   </tr>
                 ) : (
                   ranking.map((row, index) => (
                     <tr key={index}>
                       <td>
-                        {index === 0 ? '🥇 Meilleure' : index === 1 ? '🥈 2e' : index === 2 ? '🥉 3e' : `${index + 1}e`}
+                        {index === 0 ? '1st' : index === 1 ? '2nd' : index === 2 ? '3rd' : `${index + 1}th`}
                       </td>
-                      {/* 🌟 MODIFICATION : On affiche row.gameId à la place de row.username */}
-                      <td className="text-secondary fw-semibold">Partie #{row.gameId}</td>
                       <td>
-                        <span className="badge bg-success fs-6 px-3 py-2">
-                          {row.bestScore} 🪙
+                        <span className="fw-bold fs-6 bg-warning bg-opacity-50 p-2 rounded d-inline-block">
+                          {row.bestScore} <i className="bi bi-coin" style={{ color: 'black' }}></i>
                         </span>
                       </td>
+                      <td>
+                      {/* 🌟 On vérifie que la date existe et qu'elle n'est pas égale à 0 */}
+                      {row.startTime && row.startTime > 0 
+                        ? dayjs(row.startTime).format('DD/MM/YYYY [-] HH:mm') 
+                        : '—'}
+                    </td>
                     </tr>
                   ))
                 )}
               </tbody>
             </Table>
           )}
-        </Card.Body>
-      </Card>
+        
     </Container>
   );
 }

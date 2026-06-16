@@ -3,11 +3,7 @@
 import 'bootstrap/dist/css/bootstrap.min.css';
 
 import dayjs from 'dayjs';
-
-//import reactLogo from './assets/react.svg'
-//import viteLogo from './assets/vite.svg'
-//import heroImg from './assets/hero.png'
-//import './App.css'
+import './App.css';
 
 import { useContext, useState, useEffect, createContext } from 'react';
 import { Container } from 'react-bootstrap';
@@ -87,9 +83,16 @@ function App() {
 // 4. Composant de mise en page globale (Layout)
 function MainLayout(props) {
   return <>
-    <Header doLogin={props.doLogin}></Header>
-    <Outlet />
-    <Footer></Footer>
+    <div className="app-container">
+      <Header doLogin={props.doLogin}></Header>
+      
+      {/* On utilise Container ici pour centrer proprement le contenu de tes pages */}
+      <Container className="main-content">
+        <Outlet />
+      </Container>
+      
+      <Footer></Footer>
+    </div>
   </>
 }
 

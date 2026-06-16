@@ -115,7 +115,7 @@ export const getAllEvents = () => {
 // Créer et enregistrer une nouvelle partie (Initialisation à 20 coins)
 export const createGame = (userId, startStationId, destStationId, startTime) => {
   return new Promise((resolve, reject) => {
-    const sql = "INSERT INTO games (user_id, start_station_id, dest_station_id, score, status, start_time) VALUES (?, ?, ?, 20, 'in_progress', ?)";
+    const sql = "INSERT INTO games (user_id, start_station_id, end_station_id, score, status, start_time) VALUES (?, ?, ?, 20, 'in_progress', ?)";
     db.run(sql, [userId, startStationId, destStationId, startTime], function(err) {
       if (err) reject(err);
       else resolve(this.lastID); // Renvoie l'ID de la partie créée pour le client
@@ -134,7 +134,7 @@ export const getGame = (id) => {
           id: row.id,
           userId: row.user_id,
           startStationId: row.start_station_id,
-          destStationId: row.dest_station_id,
+          destStationId: row.end_station_id,
           score: row.score,
           status: row.status,
           startTime: row.start_time
@@ -165,7 +165,6 @@ export const getGlobalRanking = (userId) => { // 🌟 Ajout du paramètre userId
       FROM games g
       WHERE g.user_id = ? AND g.status = 'completed'
       ORDER BY g.score DESC
-      LIMIT 5
     `;
     
     // 🌟 On passe [userId] dans le tableau pour remplacer le "?" dans le SQL
@@ -175,7 +174,8 @@ export const getGlobalRanking = (userId) => { // 🌟 Ajout du paramètre userId
         // On renvoie la liste des meilleures parties de CE joueur
         const ranking = rows.map((row) => ({ 
           gameId: row.game_id, 
-          bestScore: row.best_score 
+          bestScore: row.best_score,
+          startTime: row.start_time
         }));
         resolve(ranking);
       }

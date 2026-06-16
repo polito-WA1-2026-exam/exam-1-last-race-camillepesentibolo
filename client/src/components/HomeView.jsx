@@ -2,57 +2,67 @@ import React from 'react';
 import { Container, Row, Col, Button, Card } from 'react-bootstrap';
 import { useNavigate } from 'react-router';
 
+import Trophy from '../assets/trophy.png';
+import Game from '../assets/game.png';
+
 function HomeView({ user }) {
   const navigate = useNavigate();
 
   return (
-    <Container className="mt-5 text-center">
-      <Row className="justify-content-md-center">
-        <Col md={8}>
-          <Card className="shadow-sm p-4">
-            <Card.Body>
-              {/* Message de bienvenue personnalisé */}
-              <h1 className="mb-4">Bienvenue, {user ? user.name : 'Conducteur'} ! 🚇</h1>
+    <Container>
+              <h1 className="mb-4">Welcome {user ? user.name : 'Conducteur'} </h1>
               <p className="text-muted mb-5">
-                Prêt à relever le défi du réseau métropolitain ? Planifie ton itinéraire, 
-                affronte les imprévus et décroche le meilleur score possible !
+                Ready to take on the challenge of the metropolitan network ? Plan your route and achieve the highest score possible !
               </p>
 
               <Row className="g-4">
-                {/* Option 1 : Commencer une nouvelle partie */}
                 <Col sm={6}>
                   <Button 
                     variant="success" 
                     size="lg" 
                     className="w-100 py-4 h-100 shadow-sm"
+                    style={{ 
+                    backgroundColor: '#e77164', /* Ta couleur de fond personnalisée */
+                    borderColor: '#d95a4c',
+                    borderWidth: '4px',          /* 🌟 ICI : Épaisseur de la bordure (ex: 4px) */
+                    borderStyle: 'solid',        /* 🌟 ICI : Type de bordure (continue) */
+                    color: 'Black'              /* La couleur de l'icône à l'intérieur */
+                  }}
                     onClick={() => navigate('/game')} // Route vers la phase de Setup/Planning
                   >
-                    <div className="fs-2 mb-2">🎮</div>
-                    <strong>Nouvelle Partie</strong>
-                    <div className="fs-6 text-light opacity-75 mt-1">Lancer un nouveau défi</div>
+                    <div className="fs-2 mb-2"><img 
+                              src={Game} 
+                              alt="Logo Last Race" 
+                              style={{ height: '70px', width: 'auto', objectFit: 'contain' }} /></div>
+                    <strong>New Game</strong>
                   </Button>
                 </Col>
 
-                {/* Option 2 : Voir le classement général */}
                 <Col sm={6}>
                   <Button 
                     variant="primary" 
                     size="lg" 
                     className="w-100 py-4 h-100 shadow-sm"
+                    style={{ 
+                    backgroundColor: '#f1de63', /* Ta couleur de fond personnalisée */
+                    borderColor: '#d9bf4c',
+                    borderWidth: '4px',          /* 🌟 ICI : Épaisseur de la bordure (ex: 4px) */
+                    borderStyle: 'solid',        /* 🌟 ICI : Type de bordure (continue) */
+                    color: 'Black'              /* La couleur de l'icône à l'intérieur */
+                  }}
                     onClick={() => navigate('/ranking')} // Route vers la page du classement général
                   >
-                    <div className="fs-2 mb-2">🏆</div>
-                    <strong>Classement Général</strong>
-                    <div className="fs-6 text-light opacity-75 mt-1">Voir les meilleurs scores</div>
+                    <div className="fs-2 mb-2"><img 
+                              src={Trophy} 
+                              alt="Logo Last Race" 
+                              style={{ height: '90px', width: 'auto', objectFit: 'contain' }} /> </div>
+                    <strong>General Ranking</strong>
+                    <div className="fs-6 text-dark mt-1">View your top scores</div>
                   </Button>
                 </Col>
               </Row>
-            </Card.Body>
-          </Card>
-        </Col>
-      </Row>
     </Container>
-  );
+  ) ;
 }
 
 export default HomeView;

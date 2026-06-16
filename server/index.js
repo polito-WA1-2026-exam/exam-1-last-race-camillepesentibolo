@@ -19,13 +19,27 @@ const port = 3001;
 app.use(express.json());
 app.use(morgan("dev"));
 
-
 const corsOptions = {
   origin: 'http://localhost:5173',
   optionsSuccessState: 200,
   credentials: true
 };
 app.use(cors(corsOptions))
+
+// 3. Configuration des SESSIONS (Doit être AVANT Passport et AVANT tes logs de routes)
+app.use(session({
+  secret: "shhhhh... it's a secret!",
+  resave: false,
+  saveUninitialized: false,
+}));
+app.use(passport.authenticate("session"));
+
+// 4. Ton middleware de Log personnalisé (Maintenant il verra les sessions !)
+app.use((req, res, next) => {
+  console.log(`📡 [LOG-ROUTE] Requête reçue : ${req.method} ${req.url}`);
+  console.log(`👤 Utilisateur connecté :`, req.user ? req.user.username : "Aucun");
+  next();
+});
 
 
 passport.use(new LocalStrategy(async function verify(username, password, cb) {
@@ -50,16 +64,11 @@ const isLoggedIn = (req, res, next) => {
   if(req.isAuthenticated()) {
     return next();
   }
-  console.log(req.user)
+  //console.log(req.user)
+  console.log("❌ [AUTH_FAIL] Tentative d'accès refusée. req.user vaut :", req.user);
   return res.status(401).json({error: "Not authorized"});
 }
 
-app.use(session({
-  secret: "shhhhh... it's a secret!",
-  resave: false,
-  saveUninitialized: false,
-}));
-app.use(passport.authenticate("session"));
 
 
 /* ROUTES */
@@ -121,36 +130,51 @@ app.post("/api/games/start", isLoggedIn, async (req, res) => {
     const stations = await getAllStations();
     const segments = await getAllSegments();
 
-    // LOGIQUE SERVEUR : Choisir deux stations de manière aléatoire
-    // (Conseil : implémentez un algorithme simple pour vérifier qu'elles ont bien 3 stations de distance au moins)
-    const randomIndex1 = Math.floor(Math.random() * 12); // Choisi nombre de 0 à 12
-    const startStation = stations[randomIndex1]; // Choisi une des 12 stations
+    if (!stations || stations.length === 0) {
+      return res.status(400).json({ error: "Aucune station disponible." });
+    }
 
+    // 1. Choix aléatoire de la station de départ
+    const randomIndex1 = Math.floor(Math.random() * stations.length);
+    const startStation = stations[randomIndex1];
+
+    // 2. Construction du graphe pour le calcul de distance
     const graph = {};
     for (const station of stations) {
       graph[station.name] = [];
     }
 
     for (const segment of segments) {
-      graph[segment.station1].push(segment.station2);
-      graph[segment.station2].push(segment.station1);
+      // 🌟 CORRECTION : Ton DAO renvoie { station1, station2 } !
+      if (graph[segment.station1] && graph[segment.station2]) {
+        graph[segment.station1].push(segment.station2);
+        graph[segment.station2].push(segment.station1);
+      }
     }
 
+    // 3. Calcul des distances à partir de la station de départ
     const distances = computeDistances(graph, startStation.name);
 
+    // 4. Filtrage des stations à une distance minimale de 3
     const validStations = stations.filter(
-      station => distances[station.name] >= 3
+      station => distances[station.name] !== undefined && distances[station.name] >= 4
     );
 
+    // Sécurité au cas où le réseau serait fragmenté ou trop petit durant les tests
+    if (validStations.length === 0) {
+      console.warn("⚠️ Aucune station à distance >= 4. Sélection d'une station par défaut.");
+      const fallbackStations = stations.filter(s => s.id !== startStation.id);
+      validStations.push(...fallbackStations);
+    }
+
+    // 5. Sélection aléatoire de la destination parmi les stations valides
     const randomIndex2 = Math.floor(Math.random() * validStations.length);
-    const randomStation = validStations[randomIndex];
+    const destinationStation = validStations[randomIndex2];
 
-    const destinationStation = validStations[randomIndex];
+    const startTime = Date.now();
 
-
-    const startTime = Date.now(); // Timestamp actuel côté serveur pour le chrono de 90s
-
-    // Enregistrement de la partie en BDD (score par défaut : 20)
+    // 6. Enregistrement de la partie en BDD
+    // 🌟 Rappel : Ton createGame prend les IDs numériques des stations
     const gameId = await createGame(req.user.id, startStation.id, destinationStation.id, startTime);
 
     // Envoi des infos nécessaires au client pour la Phase 2
@@ -158,18 +182,20 @@ app.post("/api/games/start", isLoggedIn, async (req, res) => {
       gameId: gameId,
       startStation: startStation.name,
       destinationStation: destinationStation.name,
-      stations: stations.map(s => s.name), // Juste la liste simple des noms
-      segments: segments // Liste des paires connectées
+      stations: stations.map(s => s.name),
+      segments: segments
     });
   } catch (e) {
+    console.error("====== CRASH SERVEUR START ======");
+    console.error(e.stack || e);
+    console.error("=================================");
     res.status(500).json({ error: "Could not start a new game." });
   }
 });
 
 
-// POST /api/games/:id/validate -> Phase 3 & 4 : Soumission et Exécution pas à pas
 app.post("/api/games/:id/validate", isLoggedIn, [
-  check("route").isArray({ min:1 }).withMessage("Route must be an array of at least 1 pair of stations.")
+  check("route").isArray({ min: 1 }).withMessage("Route must be an array of at least 1 segment.")
 ], async (req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
@@ -177,99 +203,125 @@ app.post("/api/games/:id/validate", isLoggedIn, [
   }
 
   const gameId = req.params.id;
-  const playerRoute = req.body.route; // Exemple : [3(id_segment),5,9]
+  const playerRoute = req.body.route; 
 
   try {
-
     const game = await getGame(gameId);
-    if (game.error || game.userId !== req.user.id || game.status !== 'in_progress') {
+
+    if (!game || game.error || game.userId !== req.user.id || game.status !== 'in_progress') {
       return res.status(404).json({ error: "Game session invalid or already completed." });
     }
 
-    // CONSIGNE DU SUJET : Vérification stricte du compte à rebours de 90 secondes sur le serveur
     const currentTime = Date.now();
-    const timeElapsed = (currentTime - game.startTime) / 1000; // En secondes
+    const timeElapsed = (currentTime - game.startTime) / 1000;
 
     if (timeElapsed > 90) {
-      // Si le temps est dépassé, score automatique à 0 et échec
       await updateGameResult(gameId, 0, 'completed');
       return res.status(200).json({
         isValid: false,
-        reason: "Time limit exceeded! 90 seconds are over.",
+        reason: "Temps écoulé ! Les 90 secondes sont dépassées.",
         finalScore: 0,
         steps: []
       });
     }
 
-    // LOGIQUE DU JEU : Validation de l'itinéraire et calcul des événements
-    // 1. Vérifier si playerRoute[0] correspond à la station de départ du jeu
-    // 2. Vérifier si playerRoute[dernier] correspond à la destination
-    // 3. Vérifier la validité des segments et des correspondances (interchanges)
-
     const stations = await getAllStations();
-    const segments = await getAllSegments();
+    
+    const startStationObj = stations.find(s => s.id === game.startStationId);
+    const destStationObj = stations.find(s => s.id === game.destStationId);
+    
+    if (!startStationObj || !destStationObj) {
+      return res.status(500).json({ error: "Stations de référence introuvables." });
+    }
 
-    let isRouteValid = true; 
+    // --- 1. CONSTRUCTION DU GRAPHE DES CONNEXIONS ---
+    // On crée une carte où chaque station liste ses voisines directes choisies par le joueur
+    const graph = {};
+    
+    for (const seg of playerRoute) {
+      if (!seg.station1 || !seg.station2) continue;
+      
+      if (!graph[seg.station1]) graph[seg.station1] = [];
+      if (!graph[seg.station2]) graph[seg.station2] = [];
+      
+      graph[seg.station1].push(seg.station2);
+      graph[seg.station2].push(seg.station1);
+    }
 
-    const RouteStations = playerRoute.map(segmentId => {
-      const segment = segments.find(s => s.id === segmentId);
-      return segment ? [segment.station1, segment.station2] : [];
-    }).flat();  // return ["A", "B", "B", "C"];
+    const startName = startStationObj.name;
+    const destName = destStationObj.name;
 
+    // --- 2. TRAVERSÉE DU GRAPHE (DE DÉPART À ARRIVÉE) ---
+    let isRouteValid = true;
+    const routeStations = [];
+    
+    // On commence à la station de départ
+    let currentStation = startName;
+    routeStations.push(currentStation);
 
-    // Remplacez par votre algorithme de vérification
-    if (RouteStations[0] !== game.startStationId || RouteStations[RouteStations.length - 1] !== game.destStationId) {
-      isRouteValid = false;
-      }
-
-    if (RouteStations.length < 2) {
-      isRouteValid = false;
-    } 
-    else {
-      for (let i = 1; i < RouteStations.length - 2; i += 2) {
-        if (RouteStations[i] !== RouteStations[i + 1]) {
-          isRouteValid = false;
+    // On va marcher de station en station tant qu'on n'a pas atteint la destination
+    while (currentStation !== destName) {
+      const neighbors = graph[currentStation] || [];
+      
+      // On cherche un voisin qui n'a pas encore été visité pour éviter de tourner en rond
+      const nextStation = neighbors.find(neighbor => !routeStations.includes(neighbor));
+      
+      if (!nextStation) {
+        // Impasse ! Soit le chemin est coupé, soit il ne mène pas à l'arrivée, soit il y a un doublon
+        isRouteValid = false;
         break;
-        }
       }
+      
+      routeStations.push(nextStation);
+      currentStation = nextStation;
+
+      // Anti-boucle infinie de sécurité (si le joueur a mis trop de segments)
+      if (routeStations.length > playerRoute.length + 1) {
+        isRouteValid = false;
+        break;
+      }
+    }
+
+    // --- 3. VÉRIFICATION FINALE DES SEGMENTS UTILISÉS ---
+    // Le chemin doit être valide ET le joueur doit avoir utilisé exactement le bon nombre de segments 
+    // (pour éviter qu'il triche en envoyant des segments en trop qui polluent le réseau)
+    if (isRouteValid && routeStations.length !== playerRoute.length + 1) {
+      isRouteValid = false;
+    }
+
+    console.log("Route reconstruite par cheminement :", routeStations);
+    // --- 3. TRAITEMENT DU RÉSULTAT ---
+    if (!isRouteValid || playerRoute.length === 0) {
+      await updateGameResult(gameId, 0, 'completed');
+      return res.status(200).json({ 
+        isValid: false, 
+        reason: "Itinéraire invalide ou interrompu (les stations ne se suivent pas ou n'atteignent pas l'objectif).", 
+        finalScore: 0, 
+        steps: [] 
+      });
     }
 
     let currentCoins = 20;
     const steps = [];
+    const allEvents = await getAllEvents();
 
-    if (!isRouteValid) {
-      await dao.updateGameResult(gameId, 0, 'completed');
-      return res.status(200).json({ 
-        isValid: false, 
-        reason: "Invalid metro route layout.", 
-        finalScore: 0, 
-        steps: [] });
-    }
-
-    // Pioche des événements aléatoires pour chaque segment de la route
-    const allEvents = await getAllEvents(); // Récupère vos 8+ événements depuis la BDD
-
-    for (let i = 0; i < playerRoute.length - 1; i++) {
-      const segmentName = `${playerRoute[i]} -> ${playerRoute[i+1]}`;
-      
-      // Sélection aléatoire d'un événement
+    for (let i = 0; i < playerRoute.length; i++) {
+      const seg = playerRoute[i];
       const randomEvent = allEvents[Math.floor(Math.random() * allEvents.length)];
       
       currentCoins += randomEvent.effect;
-      if (currentCoins < 0) currentCoins = 0; // Le score ne peut pas être négatif
+      if (currentCoins < 0) currentCoins = 0; 
 
       steps.push({
-        segment: segmentName,
+        segment: `${seg.station1} ⇄ ${seg.station2}`,
         eventDescription: randomEvent.description,
         effect: randomEvent.effect,
         currentCoins: currentCoins
       });
     }
 
-    // Sauvegarde du score final dans la base de données
     await updateGameResult(gameId, currentCoins, 'completed');
 
-    // Réponse structurée pour permettre à React de faire l'affichage "étape par étape" requis
     res.status(200).json({
       isValid: true,
       finalScore: currentCoins,
@@ -277,12 +329,10 @@ app.post("/api/games/:id/validate", isLoggedIn, [
     });
 
   } catch (e) {
+    console.error(e);
     res.status(503).json({ error: "Server error during route validation." });
   }
 });
-
-
-
 
 
 // activate the server

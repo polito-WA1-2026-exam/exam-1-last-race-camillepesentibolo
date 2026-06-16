@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { Container, Button, Card, Spinner, Row, Col, Badge, Table, ListGroup, Alert } from 'react-bootstrap';
+import 'bootstrap-icons/font/bootstrap-icons.css';
 
 function GameLayout() {
-  const [gamePhase, setGamePhase] = useState(1); // 1 = Setup, 2 = En cours
+  const [gamePhase, setGamePhase] = useState(1); // 1 = Setup, 2 = Planning, 3 = Exécution/Résultats
   const [networkData, setNetworkData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -10,6 +11,21 @@ function GameLayout() {
   // États pour la partie en cours (Phase 2)
   const [currentGame, setCurrentGame] = useState(null);
   const [timeLeft, setTimeLeft] = useState(90);
+  const [selectedSegments, setSelectedSegments] = useState([]);
+
+  // États pour la Phase 3 (Exécution des événements pas à pas)
+  const [validationResult, setValidationResult] = useState(null);
+  const [currentStepIndex, setCurrentStepIndex] = useState(0);
+
+  // Fonction pour ajouter un segment à l'itinéraire
+  const handleSelectSegment = (segment) => {
+    setSelectedSegments((prev) => [...prev, segment]);
+  };
+
+  // Fonction pour retirer le dernier segment ajouté
+  const handleRemoveLastSegment = () => {
+    setSelectedSegments((prev) => prev.slice(0, -1));
+  };
 
   // 1. Charger la carte du réseau (Phase 1)
   useEffect(() => {
@@ -28,7 +44,37 @@ function GameLayout() {
     loadNetwork();
   }, []);
 
-  // 2. Compte à rebours de 90 secondes (Phase 2)
+  // 2. Soumission de l'itinéraire au serveur (Fin de Phase 2 -> Phase 3)
+  const handleSubmitRoute = async (forcedRoute = null) => {
+    setLoading(true);
+    setError(null);
+    const routeToSend = forcedRoute || selectedSegments;
+
+    try {
+      const response = await fetch(`http://localhost:3001/api/games/${currentGame.gameId}/validate`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ route: routeToSend })
+      });
+
+      if (!response.ok) {
+        throw new Error("Erreur lors de la validation de la route.");
+      }
+
+      const result = await response.json();
+      setValidationResult(result);
+      setCurrentStepIndex(0); // On commence à la première étape des événements
+      setGamePhase(3); // On bascule sur l'écran d'exécution
+    } catch (err) {
+      console.error(err);
+      setError("Erreur de communication avec le serveur pour valider l'itinéraire.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // 3. Compte à rebours de 90 secondes avec auto-soumission
   useEffect(() => {
     if (gamePhase !== 2 || timeLeft <= 0) return;
 
@@ -36,16 +82,17 @@ function GameLayout() {
       setTimeLeft((prev) => {
         if (prev <= 1) {
           clearInterval(timer);
-          // Optionnel : Déclencher une soumission automatique ou un échec temps dépassé ici
+          // Si le temps s'écoule, on soumet automatiquement ce qu'on a construit !
+          handleSubmitRoute();
         }
         return prev - 1;
       });
     }, 1000);
 
     return () => clearInterval(timer);
-  }, [gamePhase, timeLeft]);
+  }, [gamePhase, timeLeft, selectedSegments]);
 
-  // 3. Fonction pour appeler l'API de démarrage du jeu (Transition Phase 1 ➔ Phase 2)
+  // 4. Démarrer une nouvelle partie (Phase 1 ➔ Phase 2)
   const handleStartGame = async () => {
     setLoading(true);
     setError(null);
@@ -60,13 +107,15 @@ function GameLayout() {
         throw new Error("Erreur lors de la création de la partie.");
       }
 
-      const gameData = await response.json(); // Reçoit gameId, startStation, destinationStation...
+      const gameData = await response.json();
       setCurrentGame(gameData);
-      setTimeLeft(90); // Réinitialise le chrono à 90s
-      setGamePhase(2); // Bascule sur l'écran de jeu
+      setSelectedSegments([]); 
+      setValidationResult(null);
+      setTimeLeft(90); 
+      setGamePhase(2); 
     } catch (err) {
       console.error(err);
-      setError("Impossible de démarrer la partie. Vérifiez vos données de stations.");
+      setError("Impossible de démarrer la partie.");
     } finally {
       setLoading(false);
     }
@@ -76,7 +125,7 @@ function GameLayout() {
     return (
       <div className="text-center mt-5">
         <Spinner animation="border" variant="primary" />
-        <p className="mt-2 text-muted">Chargement de la carte du réseau...</p>
+        <p className="mt-2 text-muted">Chargement du réseau de métro...</p>
       </div>
     );
   }
@@ -86,127 +135,359 @@ function GameLayout() {
       {error && <Alert variant="danger" className="mb-3">{error}</Alert>}
 
       {/* PHASE 1 : Étude du plan du réseau */}
-        {gamePhase === 1 && (
-        <Card className="shadow-sm p-3">
-            <Card.Body>
+      {gamePhase === 1 && (      
+          <div className="track-layout-container">
             <div className="d-flex justify-content-between align-items-center mb-4">
-                <div>
-                <h2 className="fw-bold text-primary">🚇 Phase 1 : Plan du Réseau</h2>
+              <div >
+                <h2 className="fw-bold" style={{ color: '#4048d4' }}>Phase 1: Track Layout</h2>
                 <p className="text-muted mb-0">
-                    Prenez connaissance des lignes, des stations disponibles et de leurs connexions avant de lancer la course.
+                  Check the track layout before starting the race
                 </p>
-                </div>
-                <Button 
-                variant="success" 
-                size="lg" 
-                className="fw-bold px-4 shadow-sm"
-                onClick={handleStartGame}
-                >
-                🏁 Prêt à jouer !
-                </Button>
+              </div>
+              <Button variant="success" size="lg" className="fw-bold px-4" onClick={handleStartGame}>
+                <i className="bi bi-flag"></i> Play
+              </Button>
+
             </div>
+
+            <hr />
+            
+            <Row className="g-4">
+              <Col lg={8}>                
+                  <h4 className="mb-3">Network map</h4>
+                  <div className="metro-container" > 
+                    <svg 
+                      width="600" 
+                      height="600" 
+                      viewBox="0 0 650 650" 
+                      style={{ backgroundColor: 'white' }}>
+                      
+                      <style>{`
+                        text { font-family: 'Segoe UI', Roboto, sans-serif; font-weight: bold; dominant-baseline: central; }
+                        .station-name { font-size: 14px; fill: #212529; }
+                        .line-label { font-size: 18px; font-style: italic; text-anchor: middle; }
+                        circle { stroke-width: 2.5; fill: white; }
+                        line { stroke-width: 4; stroke-linecap: round; }
+                      `}</style>
+
+                      {/* ==================== 1. LES LIGNES (TRACÉS) ==================== */}
+                      {/* Line 1 (Rouge) */}
+                      <line x1="270" y1="130"  x2="400" y2="130" stroke="#B83A26" />
+                      <line x1="400" y1="130" x2="400" y2="250" stroke="#B83A26" />
+                      <line x1="400" y1="250" x2="400" y2="370" stroke="#B83A26" />
+
+                      {/* Line 2 (Bleue) */}
+                      <line x1="150" y1="250" x2="270" y2="250" stroke="#3A78E3" />
+                      <line x1="270" y1="250" x2="400" y2="250" stroke="#3A78E3" />
+                      <line x1="400" y1="250" x2="520" y2="250" stroke="#3A78E3" />
+
+                      {/* Line 3 (Verte) */}
+                      <line x1="150" y1="250" x2="270" y2="370" stroke="#7CB656" />
+                      <line x1="270" y1="370" x2="270" y2="470" stroke="#7CB656" />
+                      <line x1="270" y1="470" x2="270" y2="570" stroke="#7CB656" />
+
+                      {/* Line 4 (Orange) */}
+                      <line x1="270" y1="470" x2="400" y2="470" stroke="#E69C45" />
+                      <line x1="400" y1="470" x2="520" y2="470" stroke="#E69C45" />
+
+
+                      {/* ==================== 2. LES STATIONS (CERCLES PLUS PETITS) ==================== */}
+                      {/* Stations simples Ligne 1 */}
+                      <circle cx="270" cy="130"  r="8" stroke="#B83A26" />
+                      <circle cx="400" cy="130" r="8" stroke="#B83A26" />
+                      <circle cx="400" cy="370" r="8" stroke="#B83A26" />
+
+                      {/* Stations simples Ligne 2 */}
+                      <circle cx="270" cy="250" r="8" stroke="#3A78E3" />
+                      <circle cx="520" cy="250" r="8" stroke="#3A78E3" />
+
+                      {/* Stations simples Ligne 3 */}
+                      <circle cx="270" cy="370" r="8" stroke="#7CB656" />
+                      <circle cx="270" cy="570" r="8" stroke="#7CB656" />
+
+                      {/* Stations simples Ligne 4 */}
+                      <circle cx="400" cy="470" r="8" stroke="#E69C45" />
+                      <circle cx="520" cy="470" r="8" stroke="#E69C45" />
+
+                      {/* STATIONS DE CORRESPONDANCE (Double cercle affiné) */}
+                      <circle cx="400" cy="250" r="12" stroke="#3A78E3" />
+                      <circle cx="400" cy="250" r="7" stroke="#B83A26" />
+
+                      <circle cx="150" cy="250" r="12" stroke="#7CB656" />
+                      <circle cx="150" cy="250" r="7" stroke="#3A78E3" />
+
+                      <circle cx="270" cy="470" r="12" stroke="#E69C45" />
+                      <circle cx="270" cy="470" r="7" stroke="#7CB656" />
+
+
+                      {/* ==================== 3. NOMS DES STATIONS ==================== */}
+                      <text x="225" y="105"  className="station-name" textAnchor="start">Porta Genova</text>
+                      <text x="370" y="105" className="station-name" textAnchor="start">Famagosta</text>
+                      <text x="418" y="225" className="station-name" textAnchor="start">Pagano</text>
+                      <text x="415" y="370" className="station-name" textAnchor="start">Portello</text>
+                      <text x="150" y="225" className="station-name" textAnchor="middle">Isola</text>
+                      <text x="285" y="225" className="station-name" textAnchor="end">Susa</text>
+                      <text x="535" y="250" className="station-name" textAnchor="start">Vimodrone</text>
+                      <text x="200" y="370" className="station-name" textAnchor="start">Pasteur</text>
+                      <text x="155" y="470" className="station-name" textAnchor="start">Porta Romana</text>
+                      <text x="210" y="570" className="station-name" textAnchor="start">Rivoli</text>
+                      <text x="400" y="490" className="station-name" textAnchor="middle">Tre Torri</text>
+                      <text x="520" y="490" className="station-name" textAnchor="middle">Turati</text>
+
+                      {/* Noms des lignes */}
+                      <text x="220" y="130"  className="line-label" fill="#B83A26">line 1</text>
+                      <text x="95"  y="250" className="line-label" fill="#3A78E3">line 2</text>
+                      <text x="270" y="605" className="line-label" fill="#7CB656">line 3</text>
+                      <text x="570" y="470" className="line-label" fill="#E69C45">line 4</text>
+
+                    </svg>
+                  </div>               
+              </Col>
+              <Col lg={4}>
+                  <h4 className="mb-3">Direct Connections (Segments)</h4>
+                  <div style={{ maxHeight: '600px', overflowY: 'auto' }} className="border rounded bg-white">
+                    <Table striped hover className="mb-0 text-center">
+                      <thead>
+                        <tr><th>Station A</th><th>⇄</th><th>Station B</th></tr>
+                      </thead>
+                      <tbody>
+                        {networkData?.segments?.map((seg) => (
+                          <tr key={seg.id}>
+                            <td>{seg.station1_name}</td><td>⇄</td><td>{seg.station2_name}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </Table>
+                  </div>
+                
+              </Col>
+            </Row>
+          </div>
+        
+      )}
+
+      {/* PHASE 2 : Planning de la course */}
+      {gamePhase === 2 && currentGame && (
+        <Container>
+            <Row>
+              <Col md={8}>
+                <h3 className="fw-bold" style={{ color: '#4048d4' }}>Phase 2 : Planning</h3>
+                <h5>
+                  Connect <Badge bg="success">{currentGame.startStation}</Badge> to <Badge bg="danger">{currentGame.destinationStation}</Badge>
+                </h5>
+              </Col>
+              <Col md={4} className="text-md-end text-center">
+                <div className={`fs-3 fw-bold p-2 rounded border d-inline-block ${timeLeft <= 20 ? 'text-danger bg-danger-subtle' : 'text-primary bg-primary-subtle'}`}>
+                  <i className="bi bi-stopwatch"></i> {timeLeft}s
+                </div>
+              </Col>
+            </Row>
 
             <hr />
 
             <Row className="g-4">
-                {/* Lignes à gauche */}
-                <Col lg={6}>
-                <Card className="h-100 border-0 bg-light p-3">
-                    <h4 className="mb-3">🗺️ Liste des Lignes</h4>
-                    <ListGroup variant="flush" className="rounded shadow-sm">
-                    {networkData?.lines?.map((line, index) => {
-                        // On récupère les stations associées à cette ligne via line_id
-                        const lineStations = networkData.stations?.filter(s => s.line_id === line.id) || [];
+              {/* Carte simplifiée */}
+              <Col lg={6}>             
+                  <h5 >Network map</h5>
+                  <div className="metro-container" > 
+                    <svg 
+                      width="400" 
+                      height="400" 
+                      viewBox="50 60 600 600" 
+                      style={{ backgroundColor: 'white' }}>
+                      
+                      <style>{`
+                        text { font-family: 'Segoe UI', Roboto, sans-serif; font-weight: bold; dominant-baseline: central; }
+                        .station-name { font-size: 14px; fill: #212529; }
+                        .line-label { font-size: 18px; font-style: italic; text-anchor: middle; }
+                        circle { stroke-width: 2.5; fill: white; }
+                        line { stroke-width: 4; stroke-linecap: round; }
+                      `}</style>
 
-                        return (
-                        <ListGroup.Item key={index} className="py-3">
-                            <Badge bg="dark" className="me-2 fs-6 px-3" style={{ backgroundColor: line.id === 1 ? '#e74c3c' : line.id === 2 ? '#3498db' : line.id === 3 ? '#2ecc71' : '#f39c12' }}>
-                            {line.name}
-                            </Badge>
-                            <p className="mb-0 text-secondary small mt-2">
-                            <strong>Stations dans l'ordre :</strong><br />
-                            {lineStations.length > 0 
-                                ? lineStations.map(s => `${s.name} (#${s.id})`).join(' ➔ ')
-                                : <span className="text-danger">Aucune station trouvée</span>
-                            }
-                            </p>
-                        </ListGroup.Item>
+
+                      {/* ==================== 2. LES STATIONS (CERCLES PLUS PETITS) ==================== */}
+                      {/* Stations simples Ligne 1 */}
+                      <circle cx="270" cy="130"  r="8" stroke="#000000" />
+                      <circle cx="400" cy="130" r="8" stroke="#000000" />
+                      <circle cx="400" cy="370" r="8" stroke="#000000" />
+
+                      {/* Stations simples Ligne 2 */}
+                      <circle cx="270" cy="250" r="8" stroke="#000000" />
+                      <circle cx="520" cy="250" r="8" stroke="#000000" />
+
+                      {/* Stations simples Ligne 3 */}
+                      <circle cx="270" cy="370" r="8" stroke="#000000" />
+                      <circle cx="270" cy="570" r="8" stroke="#000000" />
+
+                      {/* Stations simples Ligne 4 */}
+                      <circle cx="400" cy="470" r="8" stroke="#000000" />
+                      <circle cx="520" cy="470" r="8" stroke="#000000" />
+
+                      {/* STATIONS DE CORRESPONDANCE (Double cercle affiné) */}
+                      <circle cx="400" cy="250" r="8" stroke="#000000" />
+
+                      <circle cx="150" cy="250" r="8" stroke="#000000" />
+
+                      <circle cx="270" cy="470" r="8" stroke="#000000" />
+
+
+                      {/* ==================== 3. NOMS DES STATIONS ==================== */}
+                      <text x="225" y="105"  className="station-name" textAnchor="start">Porta Genova</text>
+                      <text x="370" y="105" className="station-name" textAnchor="start">Famagosta</text>
+                      <text x="418" y="225" className="station-name" textAnchor="start">Pagano</text>
+                      <text x="415" y="370" className="station-name" textAnchor="start">Portello</text>
+                      <text x="150" y="225" className="station-name" textAnchor="middle">Isola</text>
+                      <text x="285" y="225" className="station-name" textAnchor="end">Susa</text>
+                      <text x="535" y="250" className="station-name" textAnchor="start">Vimodrone</text>
+                      <text x="200" y="370" className="station-name" textAnchor="start">Pasteur</text>
+                      <text x="155" y="470" className="station-name" textAnchor="start">Porta Romana</text>
+                      <text x="210" y="570" className="station-name" textAnchor="start">Rivoli</text>
+                      <text x="400" y="490" className="station-name" textAnchor="middle">Tre Torri</text>
+                      <text x="520" y="490" className="station-name" textAnchor="middle">Turati</text>
+
+
+                    </svg>
+                  </div> 
+              </Col>
+
+              {/* Segments sélectionnables (CORRIGÉ : sans bouton imbriqué) */}
+              <Col lg={6}>
+                  <h5>Segments</h5>
+                  <div style={{ maxHeight: '400px', overflowY: 'auto' }} className="border rounded bg-white">
+                    <ListGroup variant="flush">
+                      {currentGame.segments?.map((seg, idx) => {
+                        const isSelected = selectedSegments.some(s => 
+                          (s.station1 === seg.station1 && s.station2 === seg.station2) ||
+                          (s.station1 === seg.station2 && s.station2 === seg.station1)
                         );
-                    })}
+                        return (
+                          <ListGroup.Item 
+                            key={idx} 
+                            disabled={isSelected || timeLeft <= 0} 
+                            onClick={() => !isSelected && timeLeft > 0 && handleSelectSegment(seg)} 
+                            className={`d-flex justify-content-between align-items-center py-2 ${isSelected ? 'bg-secondary-subtle text-muted text-decoration-line-through' : ''}`}
+                            style={{ cursor: isSelected ? 'default' : 'pointer' }}
+                          >
+                            <span className="small fw-semibold">{seg.station1} ⇄ {seg.station2}</span>
+                            <Badge bg={isSelected ? "secondary" : "outline-primary"} className={`px-2 py-1 ${!isSelected ? 'text-primary border border-primary bg-transparent' : ''}`}>
+                              {isSelected ? " " : "＋ Add"}
+                            </Badge>
+                          </ListGroup.Item>
+                        );
+                      })}
                     </ListGroup>
-                </Card>
-                </Col>
-
-                {/* Segments à droite */}
-                <Col lg={6}>
-                <Card className="h-100 border-0 bg-light p-3">
-                    <h4 className="mb-3">🔗 Connexions directes (Segments)</h4>
-                    <div style={{ maxHeight: '400px', overflowY: 'auto' }} className="border rounded bg-white shadow-sm">
-                    <Table striped hover responsive className="mb-0 text-center align-middle">
-                        <thead className="table-dark sticky-top">
-                        <tr>
-                            <th>ID Segment</th>
-                            <th>Station A</th>
-                            <th>⇄</th>
-                            <th>Station B</th>
-                        </tr>
-                        </thead>
-                        <tbody>
-                        {networkData?.segments?.length > 0 ? (
-                            networkData.segments.map((seg) => (
-                            <tr key={seg.id}>
-                                <td className="fw-bold text-primary">#{seg.id}</td>
-                                {/* 🌟 On utilise les vrais noms de colonnes : station1_name et station2_name */}
-                                <td>{seg.station1_name}</td>
-                                <td className="text-muted">⇄</td>
-                                <td>{seg.station2_name}</td>
-                            </tr>
-                            ))
-                        ) : (
-                            <tr>
-                            <td colSpan="4" className="text-danger py-3">Aucun segment reçu du serveur.</td>
-                            </tr>
-                        )}
-                        </tbody>
-                    </Table>
-                    </div>
-                </Card>
-                </Col>
+                  </div>
+                
+              </Col>
             </Row>
-            </Card.Body>
-        </Card>
-        )}
 
-      {/* PHASE 2 : Partie en cours (Sélection de l'itinéraire) */}
-      {gamePhase === 2 && currentGame && (
-        <Card className="shadow-sm p-4 border-primary">
+            <hr />
+
+            <Row>
+              {/* Feuille de route */}
+              <Col lg={12}>
+         
+                  <h5 className="fw-bold" style={{ color: '#4048d4' }}>Your Route Sheet</h5>
+                  <div style={{ minHeight: '200px', maxHeight: '250px', overflowY: 'auto' }} className="border rounded bg-light p-2 mb-3">
+                    {selectedSegments.length === 0 ? (
+                      <div className="text-center text-muted pt-5 small">No segment selected</div>
+                    ) : (
+                      <ListGroup variant="flush">
+                        {selectedSegments.map((seg, idx) => (
+                          <ListGroup.Item key={idx} className="py-2 small d-flex justify-content-between align-items-center border-start border-primary border-3 my-1 shadow-sm">
+                            <span><strong>{seg.station1} ⇄ {seg.station2}</strong></span>
+                            <Button variant="link" className="text-danger p-0 fw-bold text-decoration-none" onClick={handleRemoveLastSegment} disabled={idx !== selectedSegments.length - 1}>✕</Button>
+                          </ListGroup.Item>
+                        ))}
+                      </ListGroup>
+                    )}
+                  </div>
+                  <div className="mt-auto d-grid gap-2">
+                    <Button variant="primary" size="lg" className="fw-bold" style={{ backgroundColor: '#4048d4', borderColor: '#4048d4' }} disabled={selectedSegments.length === 0 || timeLeft <= 0} onClick={() => handleSubmitRoute()}>
+                      Validate Route
+                    </Button>
+                  </div>
+              </Col>
+            </Row>
+
+        </Container>
+      )}
+
+      {/* PHASE 3 : Exécution et Affichage pas à pas des événements */}
+      {gamePhase === 3 && validationResult && (
+        <Card className="shadow p-4 text-center border-dark">
           <Card.Body>
-            {/* Header de la partie : Objectif et Chrono */}
-            <Row className="align-items-center mb-4 bg-light p-3 rounded shadow-sm mx-1">
-              <Col md={8}>
-                <h3 className="fw-bold mb-1 text-dark">🚀 Mission de conduite</h3>
-                <h4 className="text-secondary mb-0">
-                  Reliez <Badge bg="primary" className="fs-5">{currentGame.startStation}</Badge> à{' '}
-                  <Badge bg="danger" className="fs-5">{currentGame.destinationStation}</Badge>
-                </h4>
-              </Col>
-              <Col md={4} className="text-md-end text-center mt-3 mt-md-0">
-                <div className={`fs-3 fw-bold p-2 rounded border inline-block ${timeLeft <= 20 ? 'text-danger bg-danger-subtle border-danger animate-pulse' : 'text-success bg-success-subtle border-success'}`}>
-                  ⏱️ {timeLeft}s
-                </div>
-              </Col>
-            </Row>
+            <h2 className="fw-bold mb-4" style={{ color: '#4048d4' }}>Phase 3 : Rapport du Centre de Contrôle</h2>
 
-            {/* Zone de planification pour la Phase 3 */}
-            <div className="p-4 border rounded text-center my-4 bg-white">
-              <h5>🛠️ [ Zone de saisie du trajet - Phase 3 & 4 ]</h5>
-              <p className="text-muted">
-                Ici, nous allons créer les champs pour que le joueur saisisse la liste des IDs de segments pour former sa route !
-              </p>
-              <Button variant="outline-danger" className="mt-3" onClick={() => setGamePhase(1)}>
-                🏳️ Abandonner la partie
-              </Button>
-            </div>
+            {/* CAS OÙ LA ROUTE EST INVALIDÉE */}
+            {!validationResult.isValid ? (
+              <div className="bg-danger-subtle border border-danger p-4 rounded mb-4">
+                <h3 className="text-danger fw-bold">❌ Course Invalidée ou Incomplète !</h3>
+                <p className="my-3 text-dark fs-5">{validationResult.reason || "L'itinéraire proposé ne respecte pas le plan de lignes."}</p>
+                <div className="fs-1 my-3">💰 0 Coin</div>
+                <p className="text-muted small">Conformément aux règles du réseau, vous perdez la totalité de vos 20 jetons initiaux.</p>
+                <Button variant="primary" className="mt-3 fw-bold btn-lg" onClick={() => setGamePhase(1)}>
+                  🔄 Revenir au menu principal
+                </Button>
+              </div>
+            ) : (
+              /* CAS OÙ LA ROUTE EST ENTIÈREMENT VALIDÉE */
+              <div>
+                <Alert variant="success" className="fs-4 fw-bold shadow-sm">
+                  ✅ Itinéraire Validé avec succès ! Suivi du trajet en cours...
+                </Alert>
+
+                {/* Affichage pas à pas de l'étape actuelle */}
+                {validationResult.steps.length > 0 && currentStepIndex < validationResult.steps.length ? (
+                  <Card className="my-4 border-primary shadow-sm bg-light">
+                    <Card.Body className="py-4">
+                      <div className="text-muted small text-uppercase fw-bold mb-2">
+                        Étape {currentStepIndex + 1} sur {validationResult.steps.length}
+                      </div>
+                      <h3 className="text-primary fw-bold mb-3">
+                        🚇 Section : {validationResult.steps[currentStepIndex].segment}
+                      </h3>
+                      <Card className="mx-auto my-3 p-3 bg-white border-warning" style={{ maxWidth: '600px' }}>
+                        <h5 className="fw-bold text-warning-emphasis">⚠️ Événement imprévu :</h5>
+                        <p className="fs-5 italic mb-0">"{validationResult.steps[currentStepIndex].eventDescription}"</p>
+                      </Card>
+                      <h4 className="my-3">
+                        Impact : {' '}
+                        <Badge bg={validationResult.steps[currentStepIndex].effect >= 0 ? "success" : "danger"} className="fs-5">
+                          {validationResult.steps[currentStepIndex].effect >= 0 ? `+${validationResult.steps[currentStepIndex].effect}` : validationResult.steps[currentStepIndex].effect} coins
+                        </Badge>
+                      </h4>
+                      <div className="fs-3 fw-bold text-dark mt-4">
+                        Solde actuel : 👛 {validationResult.steps[currentStepIndex].currentCoins} coins
+                      </div>
+
+                      <Button 
+                        variant="success" 
+                        size="lg" 
+                        className="mt-4 px-5 fw-bold" 
+                        onClick={() => setCurrentStepIndex(prev => prev + 1)}
+                      >
+                        {currentStepIndex === validationResult.steps.length - 1 ? "🏁 Voir le bilan final" : "➡️ Avancer à la station suivante"}
+                      </Button>
+                    </Card.Body>
+                  </Card>
+                ) : (
+                  /* ÉCRAN DE BILAN DE FIN DE PARCOURS */
+                  <div className="bg-success-subtle border border-success p-4 rounded my-4">
+                    <h3 className="text-success fw-bold">🏁 Terminus ! Vous êtes arrivé à destination</h3>
+                    <p className="text-muted">Tous les événements du voyage ont été appliqués avec succès.</p>
+                    <div className="bg-white rounded p-3 my-3 border d-inline-block shadow-sm">
+                      <span className="fs-4 text-secondary">Score final enregistré :</span>
+                      <div className="fs-1 fw-bold text-success">🏆 {validationResult.finalScore} Coins</div>
+                    </div>
+                    <br />
+                    <Button variant="primary" className="mt-3 fw-bold btn-lg" onClick={() => setGamePhase(1)}>
+                      🎮 Lancer une nouvelle session
+                    </Button>
+                  </div>
+                )}
+              </div>
+            )}
           </Card.Body>
         </Card>
       )}
