@@ -67,7 +67,7 @@
 
 ### GET /api/ranking
 
-- Description: Fetches the full score history and general leaderboard rankings for the authenticated user
+- Description : Fetches the full score history and general leaderboard rankings for the authenticated user
 
 - Response body content (200 OK):
 
