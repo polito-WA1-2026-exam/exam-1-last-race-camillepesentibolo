@@ -9,11 +9,11 @@
 
 - Route `/logout`: logout action page. Redirects the user back to the public landing page ('/').
 
-- Route `/home`: main user dashboard. Displays the HomeView component with navigation buttons to either start a new game or view the leaderboard. Protected route; non-authenticated users are redirected to '/'.
+- Route `/home`: main user dashboard. Displays the HomeView component with navigation buttons to either start a new game or view the leaderboard. Protected route, non-authenticated users are redirected to '/'.
 
-- Route `/ranking`: leaderboard page. Displays the RankingView component, which shows the score history and rankings of all previous games played by the user. Protected route; non-authenticated users are redirected to '/'
+- Route `/ranking`: leaderboard page. Displays the RankingView component, which shows the score history and rankings of all previous games played by the user. Protected route, non-authenticated users are redirected to '/'
 
-- Route `/game`: Core gameplay page. Displays the GameLayout component which manages all gameplay phases (Setup, Planning countdown, and Results with random events). Protected route; non-authenticated users are redirected to '/'
+- Route `/game`: Core gameplay page. Displays the GameLayout component which manages all gameplay phases (Setup, Planning countdown, and Results with random events). Protected route, non-authenticated users are redirected to '/'
 
 
 ## API Server
