@@ -35,7 +35,6 @@
 ```
 
 - Response body content (201 Created):
-
 ```json
 {
   "id": 1,
@@ -142,7 +141,7 @@
 }
 ```
 
-- Error response (422 Unprocessable Entity): Sent when the route payload is missing or is not formatted as an array.
+- Error response (422 Unprocessable Entity): sent when the route payload is missing or is not formatted as an array
 
 
 ## Database Tables
@@ -168,7 +167,13 @@
 
 ## Screenshot
 
-![Screenshot](./img/screenshot.jpg)
+- During the game
+
+![Screenshot](./client/public/duringgame.png)
+
+- Ranking page 
+
+![Screenshot](./client/public/rankingpage.png)
 
 ## Users Credentials
 
@@ -177,4 +182,4 @@
 - Alba, 1234
 
 ## Use of AI Tools
-During this project, AI were utilized to assist with debugging and layout design.Specifically the AI was used to resolve debugging issues when errors became difficult to trace manually. Additionally it helped streamline the frontend development by providing the necessary components and formatting options for the layout, such as text styling and element positioning. Finally, it was used to assist with text translation, for example to ensure clear game instructions.
+During this project, some AI was used to assist with debugging, layout design, and translation. Specifically it helped find coding errors that were hard to trace manually. It also speeded up frontend development by helping with some component building, text styling, and element positioning. Finally it was also used to some translate text, for example to ensure clear game instructions.
