@@ -4,31 +4,31 @@ import 'bootstrap-icons/font/bootstrap-icons.css';
 
 function GameLayout() {
 
-  const [gamePhase, setGamePhase] = useState(1); // 1 = Setup, 2 = Planning, 3 = Exécution/Résultats
+  const [gamePhase, setGamePhase] = useState(1); // 1 = Setup, 2 = Planning, 3 = Result
   const [networkData, setNetworkData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  // États pour la partie en cours (Phase 2)
+  // State phase 2
   const [currentGame, setCurrentGame] = useState(null);
   const [timeLeft, setTimeLeft] = useState(90);
   const [selectedSegments, setSelectedSegments] = useState([]);
 
-  // États pour la Phase 3 (Exécution des événements pas à pas)
+  // State phase 3 
   const [validationResult, setValidationResult] = useState(null);
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
 
-  // Fonction pour ajouter un segment à l'itinéraire
+  // To add segment to the route
   const handleSelectSegment = (segment) => {
     setSelectedSegments((prev) => [...prev, segment]);
   };
 
-  // Fonction pour retirer le dernier segment ajouté
+  // remove last segment
   const handleRemoveLastSegment = () => {
     setSelectedSegments((prev) => prev.slice(0, -1));
   };
 
-  // 1. Charger la carte du réseau (Phase 1)
+  // Load the network map (Phase 1)
   useEffect(() => {
     async function loadNetwork() {
       try {
@@ -37,15 +37,14 @@ function GameLayout() {
         setNetworkData(data);
         setLoading(false);
       } catch (error) {
-        console.error("Erreur chargement réseau:", error);
-        setError("Impossible de charger la carte du réseau.");
+        setError("Failed to load the network map.");
         setLoading(false);
       }
     }
     loadNetwork();
   }, []);
 
-  // 2. Soumission de l'itinéraire au serveur (Fin de Phase 2 -> Phase 3)
+  // Submitting the route to the server (End of Phase 2 -> Phase 3)
   const handleSubmitRoute = async (forcedRoute = null) => {
     setLoading(true);
     setError(null);
@@ -60,22 +59,21 @@ function GameLayout() {
       });
 
       if (!response.ok) {
-        throw new Error("Erreur lors de la validation de la route.");
+        throw new Error("Route validation error");
       }
 
       const result = await response.json();
       setValidationResult(result);
-      setCurrentStepIndex(0); // On commence à la première étape des événements
-      setGamePhase(3); // On bascule sur l'écran d'exécution
+      setCurrentStepIndex(0);
+      setGamePhase(3);
     } catch (err) {
-      console.error(err);
-      setError("Erreur de communication avec le serveur pour valider l'itinéraire.");
+      setError("Server communication error while validating the route.");
     } finally {
       setLoading(false);
     }
   };
 
-  // 3. Compte à rebours de 90 secondes avec auto-soumission
+  // 90-second countdown
   useEffect(() => {
     if (gamePhase !== 2 || timeLeft <= 0) return;
 
@@ -83,7 +81,6 @@ function GameLayout() {
       setTimeLeft((prev) => {
         if (prev <= 1) {
           clearInterval(timer);
-          // Si le temps s'écoule, on soumet automatiquement ce qu'on a construit !
           handleSubmitRoute();
         }
         return prev - 1;
@@ -93,7 +90,7 @@ function GameLayout() {
     return () => clearInterval(timer);
   }, [gamePhase, timeLeft, selectedSegments]);
 
-  // 4. Démarrer une nouvelle partie (Phase 1 ➔ Phase 2)
+  // Start new game
   const handleStartGame = async () => {
     setLoading(true);
     setError(null);
@@ -105,7 +102,7 @@ function GameLayout() {
       });
 
       if (!response.ok) {
-        throw new Error("Erreur lors de la création de la partie.");
+        throw new Error("Failed to create the new game");
       }
 
       const gameData = await response.json();
@@ -115,8 +112,7 @@ function GameLayout() {
       setTimeLeft(90); 
       setGamePhase(2); 
     } catch (err) {
-      console.error(err);
-      setError("Impossible de démarrer la partie.");
+      setError("Impossible to start the game");
     } finally {
       setLoading(false);
     }
@@ -126,7 +122,7 @@ function GameLayout() {
     return (
       <div className="text-center mt-5">
         <Spinner animation="border" variant="primary" />
-        <p className="mt-2 text-muted">Chargement du réseau de métro...</p>
+        <p className="mt-2 text-muted">Loading the network...</p>
       </div>
     );
   }
@@ -135,7 +131,7 @@ function GameLayout() {
     <Container className="mt-4">
       {error && <Alert variant="danger" className="mb-3">{error}</Alert>}
 
-      {/* PHASE 1 : Étude du plan du réseau */}
+      {/* PHASE 1 */}
       {gamePhase === 1 && (      
           <div className="track-layout-container">
             <div className="d-flex justify-content-between align-items-center mb-4">
@@ -148,7 +144,6 @@ function GameLayout() {
               <Button variant="success" size="lg" className="fw-bold px-4" onClick={handleStartGame}>
                 <i className="bi bi-flag"></i> Play
               </Button>
-
             </div>
 
             <hr />
@@ -171,46 +166,44 @@ function GameLayout() {
                         line { stroke-width: 4; stroke-linecap: round; }
                       `}</style>
 
-                      {/* ==================== 1. LES LIGNES (TRACÉS) ==================== */}
-                      {/* Line 1 (Rouge) */}
+                      {/* Line 1 */}
                       <line x1="270" y1="130"  x2="400" y2="130" stroke="#B83A26" />
                       <line x1="400" y1="130" x2="400" y2="250" stroke="#B83A26" />
                       <line x1="400" y1="250" x2="400" y2="370" stroke="#B83A26" />
 
-                      {/* Line 2 (Bleue) */}
+                      {/* Line 2 */}
                       <line x1="150" y1="250" x2="270" y2="250" stroke="#3A78E3" />
                       <line x1="270" y1="250" x2="400" y2="250" stroke="#3A78E3" />
                       <line x1="400" y1="250" x2="520" y2="250" stroke="#3A78E3" />
 
-                      {/* Line 3 (Verte) */}
+                      {/* Line 3 */}
                       <line x1="150" y1="250" x2="270" y2="370" stroke="#7CB656" />
                       <line x1="270" y1="370" x2="270" y2="470" stroke="#7CB656" />
                       <line x1="270" y1="470" x2="270" y2="570" stroke="#7CB656" />
 
-                      {/* Line 4 (Orange) */}
+                      {/* Line 4 */}
                       <line x1="270" y1="470" x2="400" y2="470" stroke="#E69C45" />
                       <line x1="400" y1="470" x2="520" y2="470" stroke="#E69C45" />
 
 
-                      {/* ==================== 2. LES STATIONS (CERCLES PLUS PETITS) ==================== */}
-                      {/* Stations simples Ligne 1 */}
+                      {/* Stations line 1 */}
                       <circle cx="270" cy="130"  r="8" stroke="#B83A26" />
                       <circle cx="400" cy="130" r="8" stroke="#B83A26" />
                       <circle cx="400" cy="370" r="8" stroke="#B83A26" />
 
-                      {/* Stations simples Ligne 2 */}
+                      {/* Stations line 2 */}
                       <circle cx="270" cy="250" r="8" stroke="#3A78E3" />
                       <circle cx="520" cy="250" r="8" stroke="#3A78E3" />
 
-                      {/* Stations simples Ligne 3 */}
+                      {/* Stations line 3 */}
                       <circle cx="270" cy="370" r="8" stroke="#7CB656" />
                       <circle cx="270" cy="570" r="8" stroke="#7CB656" />
 
-                      {/* Stations simples Ligne 4 */}
+                      {/* Stations line 4 */}
                       <circle cx="400" cy="470" r="8" stroke="#E69C45" />
                       <circle cx="520" cy="470" r="8" stroke="#E69C45" />
 
-                      {/* STATIONS DE CORRESPONDANCE (Double cercle affiné) */}
+                      {/* interchange stations */}
                       <circle cx="400" cy="250" r="12" stroke="#3A78E3" />
                       <circle cx="400" cy="250" r="7" stroke="#B83A26" />
 
@@ -220,8 +213,6 @@ function GameLayout() {
                       <circle cx="270" cy="470" r="12" stroke="#E69C45" />
                       <circle cx="270" cy="470" r="7" stroke="#7CB656" />
 
-
-                      {/* ==================== 3. NOMS DES STATIONS ==================== */}
                       <text x="225" y="105"  className="station-name" textAnchor="start">Porta Genova</text>
                       <text x="370" y="105" className="station-name" textAnchor="start">Famagosta</text>
                       <text x="418" y="225" className="station-name" textAnchor="start">Pagano</text>
@@ -235,7 +226,6 @@ function GameLayout() {
                       <text x="400" y="490" className="station-name" textAnchor="middle">Tre Torri</text>
                       <text x="520" y="490" className="station-name" textAnchor="middle">Turati</text>
 
-                      {/* Noms des lignes */}
                       <text x="220" y="130"  className="line-label" fill="#B83A26">line 1</text>
                       <text x="95"  y="250" className="line-label" fill="#3A78E3">line 2</text>
                       <text x="270" y="605" className="line-label" fill="#7CB656">line 3</text>
@@ -259,15 +249,14 @@ function GameLayout() {
                         ))}
                       </tbody>
                     </Table>
-                  </div>
-                
+                  </div>      
               </Col>
             </Row>
           </div>
         
       )}
 
-      {/* PHASE 2 : Planning de la course */}
+      {/* PHASE 2 */}
       {gamePhase === 2 && currentGame && (
         <Container>
             <Row>
@@ -287,7 +276,6 @@ function GameLayout() {
             <hr />
 
             <Row className="g-4">
-              {/* Carte simplifiée */}
               <Col lg={6}>             
                   <h5 >Network map</h5>
                   <div className="metro-container" > 
@@ -305,34 +293,19 @@ function GameLayout() {
                         line { stroke-width: 4; stroke-linecap: round; }
                       `}</style>
 
-
-                      {/* ==================== 2. LES STATIONS (CERCLES PLUS PETITS) ==================== */}
-                      {/* Stations simples Ligne 1 */}
                       <circle cx="270" cy="130"  r="8" stroke="#000000" />
                       <circle cx="400" cy="130" r="8" stroke="#000000" />
                       <circle cx="400" cy="370" r="8" stroke="#000000" />
-
-                      {/* Stations simples Ligne 2 */}
                       <circle cx="270" cy="250" r="8" stroke="#000000" />
                       <circle cx="520" cy="250" r="8" stroke="#000000" />
-
-                      {/* Stations simples Ligne 3 */}
                       <circle cx="270" cy="370" r="8" stroke="#000000" />
                       <circle cx="270" cy="570" r="8" stroke="#000000" />
-
-                      {/* Stations simples Ligne 4 */}
                       <circle cx="400" cy="470" r="8" stroke="#000000" />
                       <circle cx="520" cy="470" r="8" stroke="#000000" />
-
-                      {/* STATIONS DE CORRESPONDANCE (Double cercle affiné) */}
                       <circle cx="400" cy="250" r="8" stroke="#000000" />
-
                       <circle cx="150" cy="250" r="8" stroke="#000000" />
-
                       <circle cx="270" cy="470" r="8" stroke="#000000" />
 
-
-                      {/* ==================== 3. NOMS DES STATIONS ==================== */}
                       <text x="225" y="105"  className="station-name" textAnchor="start">Porta Genova</text>
                       <text x="370" y="105" className="station-name" textAnchor="start">Famagosta</text>
                       <text x="418" y="225" className="station-name" textAnchor="start">Pagano</text>
@@ -346,12 +319,10 @@ function GameLayout() {
                       <text x="400" y="490" className="station-name" textAnchor="middle">Tre Torri</text>
                       <text x="520" y="490" className="station-name" textAnchor="middle">Turati</text>
 
-
                     </svg>
                   </div> 
               </Col>
 
-              {/* Segments sélectionnables (CORRIGÉ : sans bouton imbriqué) */}
               <Col lg={6}>
                   <h5>Segments</h5>
                   <div style={{ maxHeight: '400px', overflowY: 'auto' }} className="border rounded bg-white">
@@ -371,7 +342,7 @@ function GameLayout() {
                           >
                             <span className="small fw-semibold">{seg.station1} ⇄ {seg.station2}</span>
                             <Badge bg={isSelected ? "secondary" : "outline-primary"} className={`px-2 py-1 ${!isSelected ? 'text-primary border border-primary bg-transparent' : ''}`}>
-                              {isSelected ? " " : "＋ Add"}
+                              {isSelected ? " " : " + Add"}
                             </Badge>
                           </ListGroup.Item>
                         );
@@ -385,9 +356,7 @@ function GameLayout() {
             <hr />
 
             <Row>
-              {/* Feuille de route */}
               <Col lg={12}>
-         
                   <h5 className="fw-bold" style={{ color: '#4048d4' }}>Your Route Sheet</h5>
                   <div style={{ minHeight: '200px', maxHeight: '250px', overflowY: 'auto' }} className="border rounded bg-light p-2 mb-3">
                     {selectedSegments.length === 0 ? (
@@ -414,11 +383,11 @@ function GameLayout() {
         </Container>
       )}
 
-      {/* PHASE 3 : Exécution et Affichage pas à pas des événements */}
+      {/* PHASE 3 (random events */}
       {gamePhase === 3 && validationResult && (
         <Container className="p-4 text-center border-dark">
 
-            {/* CAS OÙ LA ROUTE EST INVALIDÉE */}
+            {/* If invalided */}
             {!validationResult.isValid ? (
               <div>
                 <h1 className="text-danger fw-bold" style={{ color: 'red' }}>
@@ -434,7 +403,7 @@ function GameLayout() {
                 </Button>
               </div>
             ) : (
-              /* CAS OÙ LA ROUTE EST ENTIÈREMENT VALIDÉE */
+              /* if valided */
               <div>
                 <h1 className="text-success fw-bold">
                   <span className="fw-bold fs-3 bg-success bg-opacity-25 p-3 d-block text-center">
@@ -442,7 +411,6 @@ function GameLayout() {
                   </span>
                 </h1>
 
-                {/* Affichage pas à pas de l'étape actuelle */}
                 {validationResult.steps.length > 0 && currentStepIndex < validationResult.steps.length ? (
                   <Container className="my-4 border-primary">
                       <div className="text-muted small text-uppercase fw-bold mb-2">
@@ -477,7 +445,6 @@ function GameLayout() {
                       </Button>
                   </Container>
                 ) : (
-                  /* ÉCRAN DE BILAN DE FIN DE PARCOURS */
                   <div>
                     <div className="bg-white p-4 my-3 border d-inline-block">
                       <span className="fs-2">Final Score</span>

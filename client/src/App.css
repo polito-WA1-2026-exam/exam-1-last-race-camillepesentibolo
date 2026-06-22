@@ -1,21 +1,14 @@
-
-
-
-/* Le conteneur global */
 .app-container {
   display: flex;
   flex-direction: column;
   min-height: 100vh;
-  /* 👇 On centre horizontalement tout ce qui est direct à l'intérieur (Header, Container, Footer) */
   align-items: stretch; 
 }
 
-/* La zone centrale de ton jeu */
 .main-content {
   flex: 1;
   display: flex;
   flex-direction: column;
-  /* 👇 On centre tout le contenu de tes pages (WelcomePage, Login, etc.) au milieu de l'écran */
   justify-content: center; 
   align-items: center;
   padding-top: 30px;
@@ -23,7 +16,6 @@
   width: 100%;
 }
 
-/* Le Footer */
 .footer {
   text-align: center;
   padding: 20px;

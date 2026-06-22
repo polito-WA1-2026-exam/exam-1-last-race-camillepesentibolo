@@ -12,7 +12,7 @@ function HomeView({ user }) {
     <Container>
               <h1 className="mb-4">Welcome {user ? user.name : 'Conducteur'} </h1>
               <p className="text-muted mb-5">
-                Ready to take on the challenge of the metropolitan network ? Plan your route and achieve the highest score possible !
+                Plan your route and achieve the highest score possible !
               </p>
 
               <Row className="g-4">
@@ -22,18 +22,15 @@ function HomeView({ user }) {
                     size="lg" 
                     className="w-100 py-4 h-100 shadow-sm"
                     style={{ 
-                    backgroundColor: '#e77164', /* Ta couleur de fond personnalisée */
+                    backgroundColor: '#e77164',
                     borderColor: '#d95a4c',
-                    borderWidth: '4px',          /* 🌟 ICI : Épaisseur de la bordure (ex: 4px) */
-                    borderStyle: 'solid',        /* 🌟 ICI : Type de bordure (continue) */
-                    color: 'Black'              /* La couleur de l'icône à l'intérieur */
+                    borderWidth: '4px',
+                    borderStyle: 'solid', 
+                    color: 'Black' 
                   }}
-                    onClick={() => navigate('/game')} // Route vers la phase de Setup/Planning
-                  >
-                    <div className="fs-2 mb-2"><img 
-                              src={Game} 
-                              alt="Logo Last Race" 
-                              style={{ height: '70px', width: 'auto', objectFit: 'contain' }} /></div>
+                    onClick={() => navigate('/game')}>
+                    <div className="fs-2 mb-2"><img src={Game} alt="Logo Last Race" style={{ height: '70px', width: 'auto', objectFit: 'contain' }} />
+                    </div>
                     <strong>New Game</strong>
                   </Button>
                 </Col>
@@ -44,18 +41,15 @@ function HomeView({ user }) {
                     size="lg" 
                     className="w-100 py-4 h-100 shadow-sm"
                     style={{ 
-                    backgroundColor: '#f1de63', /* Ta couleur de fond personnalisée */
+                    backgroundColor: '#f1de63',
                     borderColor: '#d9bf4c',
-                    borderWidth: '4px',          /* 🌟 ICI : Épaisseur de la bordure (ex: 4px) */
-                    borderStyle: 'solid',        /* 🌟 ICI : Type de bordure (continue) */
-                    color: 'Black'              /* La couleur de l'icône à l'intérieur */
+                    borderWidth: '4px',
+                    borderStyle: 'solid',
+                    color: 'Black' 
                   }}
-                    onClick={() => navigate('/ranking')} // Route vers la page du classement général
-                  >
-                    <div className="fs-2 mb-2"><img 
-                              src={Trophy} 
-                              alt="Logo Last Race" 
-                              style={{ height: '90px', width: 'auto', objectFit: 'contain' }} /> </div>
+                    onClick={() => navigate('/ranking')}>
+                    <div className="fs-2 mb-2"><img src={Trophy} alt="Logo Last Race" style={{ height: '90px', width: 'auto', objectFit: 'contain' }} /> 
+                    </div>
                     <strong>General Ranking</strong>
                     <div className="fs-6 text-dark mt-1">View your top scores</div>
                   </Button>

@@ -25,7 +25,7 @@ function Event(id, description, effect) {
 }
 
 function Game(id, userId, startStationId, endStationId, 
-    score, status /*encours/gagner*/,startTime) {
+    score, status,startTime) {
   this.id = id;
   this.userId = userId;
   this.startStationId = startStationId;

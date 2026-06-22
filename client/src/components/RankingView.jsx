@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router';
 
 import dayjs from 'dayjs';
 import 'bootstrap-icons/font/bootstrap-icons.css';
-import { getRanking } from '../api/api.js'; 
+import {getRanking } from '../api/api.js'; 
 
 function RankingView() {
   const [ranking, setRanking] = useState([]);
@@ -12,7 +12,6 @@ function RankingView() {
   const [error, setError] = useState(null);
   const navigate = useNavigate();
 
-  // Charger le classement au montage du composant
   useEffect(() => {
     async function fetchRankingData() {
       try {
@@ -20,8 +19,7 @@ function RankingView() {
         setRanking(data);
         setLoading(false);
       } catch (err) {
-        console.error("Erreur dans RankingView :", err);
-        setError("Impossible de charger vos scores pour le moment.");
+        setError("Failed to load your scores at the moment.");
         setLoading(false);
       }
     }
@@ -34,34 +32,30 @@ function RankingView() {
       
           <div className="mb-4 text-center">
             <h1 style={{ 
-              color: '#212529',          /* Un noir adouci, moins agressif */
+              color: '#212529',
               margin: '10px 0', 
-              fontSize: '2.5rem',        /* Un poil plus petit */
-              fontWeight: '600',         /* Un gras élégant mais pas étouffant */
-              fontFamily: '"Segoe UI", Roboto, Helvetica, Arial, sans-serif' /* Une police moderne et épurée */
+              fontSize: '2.5rem',
+              fontWeight: '600',
+              fontFamily: '"Segoe UI", Roboto, Helvetica, Arial, sans-serif'
             }}>
               Top Scores
             </h1>
           </div>
 
-          {/* Indicateur de chargement */}
           {loading && (
             <div className="text-center my-5">
               <Spinner animation="border" variant="primary" />
-              <p className="mt-2 text-muted">Chargement de vos scores...</p>
+              <p className="mt-2 text-muted">Loading your scores...</p>
             </div>
           )}
 
-          {/* Message d'erreur si l'API échoue */}
           {error && (
             <Alert variant="danger" className="my-3">
-              {error} — Vérifie que ton serveur Node.js tourne bien sur le port 3001 et que tu es connecté.
+              {error}
             </Alert>
           )}
 
-          {/* Affichage du tableau une fois les données reçues */}
           {!loading && !error && (
-
             <Table striped bordered hover responsive className="align-middle text-center">
               <thead className="table-dark">
                 <tr>
@@ -89,11 +83,8 @@ function RankingView() {
                         </span>
                       </td>
                       <td>
-                      {/* 🌟 On vérifie que la date existe et qu'elle n'est pas égale à 0 */}
-                      {row.startTime && row.startTime > 0 
-                        ? dayjs(row.startTime).format('DD/MM/YYYY [-] HH:mm') 
-                        : '—'}
-                    </td>
+                        {row.startTime && row.startTime > 0 ? dayjs(row.startTime).format('DD/MM/YYYY [-] HH:mm') : '—'}
+                      </td>
                     </tr>
                   ))
                 )}
